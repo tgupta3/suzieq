@@ -1,0 +1,172 @@
+all:
+  # these functions are executed on all tables
+  # the args for these functions can be overridden by each table (f.e. devconfig)
+
+  # TODO:
+  # - assertions
+  get:
+  -
+  - columns:
+    - '*'
+  - columns:
+    - hostname
+    - namespace
+  unique:
+  -
+  - count: true
+  summarize:
+  -
+address:
+  top:
+  - what: vlan
+bgp:
+  top:
+  - what: pfxRx
+device:
+  top:
+  - what: memory
+devconfig:
+  unique:
+  - skip: # devconfig unique is not supported
+evpnVni:
+  top:
+  - what: vlan
+fs:
+  top:
+  - what: usedPercent
+interfaces:
+  top:
+  - what: mtu
+ifCounters: # blacklisted
+  get:
+  - skip
+  unique:
+  - skip
+  summarize:
+  - skip
+lldp:
+  top:
+  - what: peerIfindex
+macs:
+  top:
+  - what: moveCount
+mlag:
+  top:
+  - what: mlagDualPortsCnt
+namespace:
+  top:
+  - what: deviceCnt
+  get:
+  -
+  - columns:
+    - '*'
+  - columns:
+    - deviceCnt
+    - namespace
+network:
+  get:
+  - skip # already tested by namespace
+  unique:
+  - skip # already tested by namespace
+  summarize:
+  - skip # already tested by namespace
+  find:
+  - address:
+    - 10.0.0.11
+ospf:
+  top:
+  - what: numChanges
+ospfIf: # internal
+  get:
+  - skip
+  unique:
+  - skip
+  summarize:
+  - skip
+ospfNbr: # internal
+  get:
+  - skip
+  unique:
+  - skip
+  summarize:
+  - skip
+# no empty results
+path:
+  get:
+  - skip
+  unique:
+  - skip
+  summarize:
+  - skip
+# path:
+#   get:
+#   - dest: '172.16.2.104'
+#     src: '172.16.1.101'
+#     namespace:
+#     - dual-evpn
+#   unique:
+#   - dest: '172.16.2.104'
+#     src: '172.16.1.101'
+#     namespace:
+#     - dual-evpn
+#   - dest: '172.16.2.104'
+#     src: '172.16.1.101'
+#     namespace:
+#     - dual-evpn
+#     count: true
+#   top: # this top is not working at all
+#   - dest: '172.16.2.104'
+#     src: '172.16.1.101'
+#     namespace:
+#     - dual-evpn
+#     what: inMtu
+routes:
+  top:
+  - what: preference
+  lpm:
+  - address:
+    - 10.0.0.0
+  - address:
+    - 10.0.0.0
+    columns:
+    - '*'
+  - address:
+    - 10.0.0.0
+    columns:
+    - vrf
+    - prefix
+sqPoller:
+  top:
+  - what: status
+tables: # column namespaces not found. Investigate
+  top:
+  - what: allRows
+  get:
+  -
+  - columns:
+    - '*'
+  - columns:
+    - table
+    - allRows
+topmem: # blacklisted
+  get:
+  - skip
+  unique:
+  - skip
+  summarize:
+  - skip
+topcpu: # blacklisted
+  get:
+  - skip
+  unique:
+  - skip
+  summarize:
+  - skip
+#
+# add topology test when asn is converted to int
+# topology:
+#   top:
+#     what: asn
+vlan:
+  top:
+  - what: vlan
