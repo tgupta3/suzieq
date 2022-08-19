@@ -49,8 +49,6 @@ def get_exp_cols(sqobj: SqObject, df: pd.DataFrame, fun_args: Dict, fun: str) \
         exp_cols = fun_args.get('columns', sqobj._unique_def_column)
         if 'count' in fun_args:
             exp_cols.append('numRows')
-    elif fun == 'summarize':
-        exp_cols = []
     else:
         exp_cols = list(df.columns)
     return exp_cols
@@ -86,9 +84,8 @@ def compare_results(sqobj: SqObject, fun: str, fun_args_list: List[Dict]):
         if empty_exc:
             pytest.fail(f'{table}.{sq_fun.__name__}({i}) exception (empty): '
                         f'{empty_exc}')
-        if empty_exc or non_empty_exc:
-            continue
         exp_cols = get_exp_cols(sqobj, non_empty_res, fun_args, fun)
+        exp_empty_cols = exp_cols if fun != 'summarize' else []
         non_empty_cols = list(non_empty_res.columns)
         empty_cols = list(empty_res.columns)
         if 'error' in empty_res.columns and len(empty_res.columns) == 1:
@@ -105,7 +102,7 @@ def compare_results(sqobj: SqObject, fun: str, fun_args_list: List[Dict]):
         elif non_empty_cols != exp_cols:
             pytest.fail(f'{table}.{sq_fun.__name__}({i}) (non-empty) got '
                         f'{non_empty_cols}, expected {exp_cols}')
-        elif empty_cols != exp_cols:
+        elif empty_cols != exp_empty_cols:
             pytest.fail(f'{table}.{sq_fun.__name__}({i}) (empty) got '
                         f'{empty_cols}, expected {exp_cols}')
 
