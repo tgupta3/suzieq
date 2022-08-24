@@ -745,7 +745,6 @@ class PathObj(SqPandasEngine):
             )
 
         namespaces = kwargs.get("namespace", self.ctxt.namespace)
-        columns = kwargs.pop('columns', ['default'])
         if not namespaces:
             raise AttributeError("Must specify namespace to run the trace in")
 
@@ -1123,12 +1122,14 @@ class PathObj(SqPandasEngine):
             # as loop detected
             final_paths = paths
         return self._handle_user_query_str(
-            self._path_cons_result(final_paths, columns), query_str)\
+            self._path_cons_result(final_paths, **kwargs), query_str)\
             .reset_index(drop=True)
 
-    def _path_cons_result(self, paths, columns):
+    def _path_cons_result(self, paths, **kwargs):
         df_plist = []
+        columns = kwargs.get('columns', ['default'])
         fields = self.schema.get_display_fields(columns)
+        hostname = kwargs.get('hostname')
         prev_hop = hop = None
         for i, path in enumerate(paths):
             if prev_hop:
@@ -1207,6 +1208,8 @@ class PathObj(SqPandasEngine):
             prev_hop['vtepLookup'] = ''
         paths_df = pd.DataFrame(df_plist)
         paths_df.drop_duplicates(inplace=True)
+        if hostname:
+            paths_df = self._filter_hostname(paths_df, hostname)
         ret_cols = [f for f in fields if (f in paths_df.columns)]
         return paths_df[ret_cols]
 
