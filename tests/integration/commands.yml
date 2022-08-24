@@ -104,36 +104,44 @@ ospfNbr: # internal
   - skip
   summarize:
   - skip
-# no empty results
 path:
   get:
-  - skip
+  - dest: '172.16.2.104'
+    src: '172.16.1.101'
+    namespace:
+    - dual-evpn
+  - dest: '172.16.2.104'
+    src: '172.16.1.101'
+    namespace:
+    - dual-evpn
+    columns:
+    - hostname
+    - pathid
   unique:
+  - dest: '172.16.2.104'
+    src: '172.16.1.101'
+    namespace:
+    - dual-evpn
+  - dest: '172.16.2.104'
+    src: '172.16.1.101'
+    namespace:
+    - dual-evpn
+    count: true
+  - dest: '172.16.2.104'
+    src: '172.16.1.101'
+    namespace:
+    - dual-evpn
+    count: true
+    columns:
+    - pathid
+  # top: # this top is not working at all
+  # - dest: '172.16.2.104'
+  #   src: '172.16.1.101'
+  #   namespace:
+  #   - dual-evpn
+  #   what: inMtu
+  top:
   - skip
-  summarize:
-  - skip
-# path:
-#   get:
-#   - dest: '172.16.2.104'
-#     src: '172.16.1.101'
-#     namespace:
-#     - dual-evpn
-#   unique:
-#   - dest: '172.16.2.104'
-#     src: '172.16.1.101'
-#     namespace:
-#     - dual-evpn
-#   - dest: '172.16.2.104'
-#     src: '172.16.1.101'
-#     namespace:
-#     - dual-evpn
-#     count: true
-#   top: # this top is not working at all
-#   - dest: '172.16.2.104'
-#     src: '172.16.1.101'
-#     namespace:
-#     - dual-evpn
-#     what: inMtu
 routes:
   top:
   - what: preference
