@@ -134,14 +134,17 @@ path:
     count: true
     columns:
     - pathid
-  # top: # this top is not working at all
-  # - dest: '172.16.2.104'
-  #   src: '172.16.1.101'
-  #   namespace:
-  #   - dual-evpn
-  #   what: inMtu
+  summarize:
+  - dest: '172.16.2.104'
+    src: '172.16.1.101'
+    namespace:
+    - dual-evpn
   top:
-  - skip
+  - dest: '172.16.2.104'
+    src: '172.16.1.101'
+    namespace:
+    - dual-evpn
+    what: inMtu
 routes:
   top:
   - what: preference
