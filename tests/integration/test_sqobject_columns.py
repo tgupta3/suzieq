@@ -38,9 +38,9 @@ def get_exp_cols(sqobj: SqObject, df: pd.DataFrame, fun_args: Dict, fun: str) \
     Returns:
         List[str]: expected columns
     """
+    cols = fun_args.get('columns', ['default'])
     if fun == 'get':
-        exp_cols = sqobj.schema.get_display_fields(
-            fun_args.get('columns', ['default']))
+        exp_cols = sqobj.schema.get_display_fields(cols)
         schema = sqobj.schema.get_raw_schema()
         drop_cols = [item['name']
                      for item in schema if item.get('suppress', False)]
@@ -50,7 +50,10 @@ def get_exp_cols(sqobj: SqObject, df: pd.DataFrame, fun_args: Dict, fun: str) \
         if 'count' in fun_args:
             exp_cols.append('numRows')
     else:
-        exp_cols = list(df.columns)
+        if cols != ['default']:
+            exp_cols = sqobj.schema.get_display_fields(cols)
+        else:
+            exp_cols = list(df.columns)
     return exp_cols
 
 

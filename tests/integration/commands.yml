@@ -16,9 +16,15 @@ all:
 address:
   top:
   - what: vlan
+  - what: vlan
+    columns:
+    - namespace
 bgp:
   top:
   - what: pfxRx
+  - what: pfxRx
+    columns:
+    - namespace
   aver:
   -
   - columns:
@@ -26,6 +32,9 @@ bgp:
 device:
   top:
   - what: memory
+  - what: memory
+    columns:
+    - namespace
 devconfig:
   unique:
   - skip: # devconfig unique is not supported
@@ -39,9 +48,15 @@ evpnVni:
 fs:
   top:
   - what: usedPercent
+  - what: usedPercent
+    columns:
+    - namespace
 interfaces:
   top:
   - what: mtu
+  - what: mtu
+    columns:
+    - namespace
   aver:
   -
   - columns:
@@ -57,15 +72,27 @@ ifCounters: # blacklisted
 lldp:
   top:
   - what: peerIfindex
+  - what: peerIfindex
+    columns:
+    - namespace
 macs:
   top:
   - what: moveCount
+  - what: moveCount
+    columns:
+    - namespace
 mlag:
   top:
   - what: mlagDualPortsCnt
+  - what: mlagDualPortsCnt
+    columns:
+    - namespace
 namespace:
   top:
   - what: deviceCnt
+  - what: deviceCnt
+    columns:
+    - namespace
   get:
   -
   - columns:
@@ -86,6 +113,9 @@ network:
 ospf:
   top:
   - what: numChanges
+  - what: numChanges
+    columns:
+    - namespace
   aver:
   -
   - columns:
@@ -145,9 +175,19 @@ path:
     namespace:
     - dual-evpn
     what: inMtu
+  - dest: '172.16.2.104'
+    src: '172.16.1.101'
+    namespace:
+    - dual-evpn
+    what: inMtu
+    columns:
+    - namespace
 routes:
   top:
   - what: preference
+  - what: preference
+    columns:
+    - namespace
   lpm:
   - address:
     - 10.0.0.0
@@ -163,9 +203,15 @@ routes:
 sqPoller:
   top:
   - what: status
+  - what: status
+    columns:
+    - namespace
 tables: # column namespaces not found. Investigate
   top:
   - what: allRows
+  - what: allRows
+    columns:
+    - table
   get:
   -
   - columns:
@@ -195,3 +241,6 @@ topcpu: # blacklisted
 vlan:
   top:
   - what: vlan
+  - what: vlan
+    columns:
+    - namespace
