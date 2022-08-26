@@ -38,13 +38,18 @@ def get_exp_cols(sqobj: SqObject, df: pd.DataFrame, fun_args: Dict, fun: str) \
     Returns:
         List[str]: expected columns
     """
-    cols = fun_args.get('columns', ['default'])
+    cols = fun_args.get('columns') or ['default']
     if fun == 'get':
         exp_cols = sqobj.schema.get_display_fields(cols)
     elif fun == 'unique':
         exp_cols = fun_args.get('columns', sqobj._unique_def_column.copy())
         if 'count' in fun_args:
             exp_cols.append('numRows')
+    elif fun == 'top':
+        exp_cols = sqobj.schema.get_display_fields(cols)
+        what = fun_args.get('what')
+        if what not in exp_cols and cols == ['default']:
+            exp_cols.insert(-1, what)
     else:
         if cols != ['default']:
             exp_cols = sqobj.schema.get_display_fields(cols)
