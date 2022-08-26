@@ -10,7 +10,7 @@ all:
     - namespace
   unique:
   -
-  - count: true
+  - count: 'True'
   summarize:
   -
 address:
@@ -156,12 +156,12 @@ path:
     src: '172.16.1.101'
     namespace:
     - dual-evpn
-    count: true
+    count: 'True'
   - dest: '172.16.2.104'
     src: '172.16.1.101'
     namespace:
     - dual-evpn
-    count: true
+    count: 'True'
     columns:
     - pathid
   summarize:
@@ -233,9 +233,25 @@ topcpu: # blacklisted
   - skip
   summarize:
   - skip
-#
+
+topology:
+  get:
+    -
+    - columns:
+      - '*'
+    - columns:
+      - hostname
+      - namespace
+    - via:
+      - bgp
+    - via:
+      - lldp
+      - ospf
+    - via:
+      - ospf
+      columns:
+      - hostname
 # add topology test when asn is converted to int
-# topology:
 #   top:
 #     what: asn
 vlan:

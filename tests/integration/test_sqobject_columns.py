@@ -41,12 +41,8 @@ def get_exp_cols(sqobj: SqObject, df: pd.DataFrame, fun_args: Dict, fun: str) \
     cols = fun_args.get('columns', ['default'])
     if fun == 'get':
         exp_cols = sqobj.schema.get_display_fields(cols)
-        schema = sqobj.schema.get_raw_schema()
-        drop_cols = [item['name']
-                     for item in schema if item.get('suppress', False)]
-        exp_cols = [c for c in exp_cols if c not in drop_cols]
     elif fun == 'unique':
-        exp_cols = fun_args.get('columns', sqobj._unique_def_column)
+        exp_cols = fun_args.get('columns', sqobj._unique_def_column.copy())
         if 'count' in fun_args:
             exp_cols.append('numRows')
     else:
@@ -78,16 +74,24 @@ def compare_results(sqobj: SqObject, fun: str, fun_args_list: List[Dict]):
     for i, fun_args in enumerate(fun_args_list):
         fun_name = f'{table}.{sq_fun.__name__}({i})'
         fun_args = fun_args or {}
+        # columns may be updated in the sqobject
+        # need to copy to keep the original value
+        restore_columns = 'columns' in fun_args
+        columns = fun_args.get('columns', []).copy()
         non_empty_res, non_empty_exc = run_function(sq_fun, **fun_args)
         if non_empty_exc:
             pytest.fail(f'{fun_name} exception '
                         f'(non-empty): {non_empty_exc}')
         fun_args.pop('hostname', None)
+        if restore_columns:
+            fun_args['columns'] = columns.copy()
         empty_res, empty_exc = run_function(
             sq_fun, **fun_args, hostname=['invalid'])
         if empty_exc:
             pytest.fail(f'{fun_name} exception (empty): '
                         f'{empty_exc}')
+        if restore_columns:
+            fun_args['columns'] = columns.copy()
         if table == 'topology':
             check_topology_results(sqobj, non_empty_res,
                                    empty_res, fun_args, fun, fun_name)
@@ -154,26 +158,25 @@ def check_topology_results(
     if fun == 'get':
         # the 'default' columns for topology depends on the selected via.
         # it's not possible to use the schema to get the expected columns
-        if fun_args.get('columns', ['*']) != ['*']:
-            exp_cols = sqobj.schema.get_display_fields(fun_args['columns'])
-        else:
-            exp_cols = ['namespace', 'hostname', 'ifname', 'peerHostname',
-                        'vrf']
-            via = fun_args.get('via')
-            if not via:
-                exp_cols += ['asn', 'peerAsn', 'area', 'bgp', 'lldp', 'ospf']
-            elif via == 'lldp':
-                exp_cols += ['lldp']
-            elif via == 'bgp':
-                exp_cols += ['asn', 'peerAsn', 'bgp']
-                # remove 'ifname' from the expected columns. It's not returned
-                # if the via is only bgp
-                exp_cols.pop(exp_cols.index('ifname'))
-            elif via == 'ospf':
-                exp_cols += ['area', 'ospf']
-            elif via == 'arpnd':
-                exp_cols += ['arpnd', 'arpndBidir']
-            exp_cols += ['polled']
+        columns = fun_args.get('columns', ['*'])
+        exp_cols = sqobj.schema.get_display_fields(columns)
+        if columns == ['*']:
+            via = fun_args.get('via', ['bgp', 'ospf', 'lldp'])
+            drop_cols = []
+            if 'lldp' not in via:
+                drop_cols += ['lldp']
+            if 'bgp' not in via:
+                drop_cols += ['asn', 'peerAsn', 'bgp']
+            if 'ospf' not in via:
+                drop_cols += ['area', 'ospf']
+            if 'arpnd' not in via:
+                drop_cols += ['arpnd', 'arpndBidir']
+
+            if via == ['bgp']:
+                drop_cols.append('ifname')
+
+            if drop_cols:
+                exp_cols = [c for c in exp_cols if c not in drop_cols]
 
     else:
         exp_cols = get_exp_cols(sqobj, non_empty_res, fun_args, fun)
