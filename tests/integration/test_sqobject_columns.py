@@ -2,33 +2,56 @@ from typing import Callable, Dict, List, Tuple
 import pandas as pd
 import pytest
 import yaml
-from suzieq.sqobjects import get_sqobject, get_tables
+from suzieq.sqobjects import get_sqobject
 from suzieq.sqobjects.basicobj import SqObject
-from ..conftest import create_dummy_config_file
+from tests.conftest import TABLES, create_dummy_config_file
+
+# pylint: disable=redefined-outer-name
 
 
-_COMMANDS_FILE = 'tests/integration/commands.yml'
+@pytest.fixture(scope="session")
+def functions_to_test() -> Dict:
+    """Return the list of functions to test read from the test file
+
+    Yields:
+        Dict: functions to execute divided by table
+    """
+    COMMANDS_FILE = 'tests/integration/commands.yml'
+    with open(COMMANDS_FILE, 'r') as fp:
+        table_cmds = yaml.safe_load(fp)
+    yield table_cmds
+
+
+@pytest.fixture(scope="session")
+def gen_config_file() -> str:
+    """create a single config file for all tests
+
+    Returns:
+        str: path of the config file
+    """
+    yield create_dummy_config_file()
 
 
 @pytest.mark.sqobject
-def test_sqobject_columns():
+@pytest.mark.parametrize("table", [
+    pytest.param(table, marks=getattr(pytest.mark, table))
+    for table in TABLES])
+def test_sqobject_columns(table, functions_to_test, gen_config_file):
     """Test that the columns returned are correct.
 
     This check is performed both on empty and non-empty dataframes
     """
-    with open(_COMMANDS_FILE, 'r') as fp:
-        table_cmds = yaml.safe_load(fp)
-    common_functions: Dict = table_cmds['all']
-    cfg_file = create_dummy_config_file()
-    for table in get_tables():
-        sqobj: SqObject = get_sqobject(table)(config_file=cfg_file)
-        table_functions: Dict[str, List[Dict]] = common_functions.copy()
-        table_functions.update(table_cmds.get(table, {}))
-        for fun, args in table_functions.items():
-            if args and args[0] and 'skip' in args[0]:
-                # skip means not to run the test
-                continue
-            compare_results(sqobj, fun, args or [])
+    table_cmds = functions_to_test
+    common_functions = table_cmds['all']
+    cfg_file = gen_config_file
+    sqobj: SqObject = get_sqobject(table)(config_file=cfg_file)
+    table_functions: Dict[str, List[Dict]] = common_functions.copy()
+    table_functions.update(table_cmds.get(table, {}))
+    for fun, args in table_functions.items():
+        if args and args[0] and 'skip' in args[0]:
+            # skip means not to run the test
+            continue
+        compare_results(sqobj, fun, args or [])
 
 
 def get_exp_cols(sqobj: SqObject, df: pd.DataFrame, fun_args: Dict, fun: str) \
