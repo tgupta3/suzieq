@@ -343,7 +343,6 @@ class InterfacesObj(SqPandasEngine):
 
         if_df = self.get(columns=columns, type=iftype, state=state, **kwargs)
         if if_df.empty:
-            if_df = pd.DataFrame(columns=self._assert_result_cols)
             if result != 'pass':
                 if_df['result'] = 'fail'
                 if_df['assertReason'] = 'No data'

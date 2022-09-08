@@ -452,12 +452,10 @@ class SqCommand(SqPlugin):
         Returns:
             List[str]: updated columns
         """
-        return (
-            columns
-            if (columns in [['default'], ['*']] or
-                'result' in columns)
-            else columns + ['result']
-        )
+        if columns in [['default'], ['*']] or 'result' in columns:
+            return columns
+        else:
+            return columns + ['result']
 
 
 class SqTableCommand(SqCommand):

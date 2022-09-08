@@ -505,6 +505,9 @@ class SqObject(SqPlugin):
             -> List[str]:
         """Return the list of columns to show on an empty dataframe
 
+        This function returns the same set of columns the 'fun' would have
+        returned depending on the 'columns' parameter.
+
         Args:
             columns (List[str]): input columns
             fun (str): name of the caller of the function
@@ -522,6 +525,9 @@ class SqObject(SqPlugin):
         elif fun == 'top':
             fields = self.schema.get_display_fields(columns)
             what = kwargs.get('what')
+            # in case of columns = ['default'] and the <what> column not
+            # in the default columns, the 'top' function adds the <what>
+            # column at the end. Here it's necessary to do the same
             if columns == ['default'] and what and what not in fields:
                 fields.insert(-1, what)
             return fields

@@ -92,7 +92,7 @@ class TableObj(SqPandasEngine):
         fields = self.schema.get_display_fields(columns)
 
         df = self.get(**kwargs)
-        if ('error' in df.columns) or df.empty:
+        if df.empty or ('error' in df.columns):
             return df
 
         if reverse:
