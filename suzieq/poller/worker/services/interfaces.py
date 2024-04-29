@@ -1067,3 +1067,8 @@ class InterfaceService(Service):
         if len(processed_data) > 1:
             processed_data.pop(0)
         return processed_data
+
+    def _clean_vsphere_data(self, processed_data, raw_data):
+        self.logger.warning("From interfaces")
+        self.logger.warning(processed_data)
+        return processed_data

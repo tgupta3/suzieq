@@ -9,7 +9,7 @@ from http import HTTPStatus
 import json
 import re
 import operator
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 import asyncio
 from asyncio.subprocess import PIPE, DEVNULL
 # pylint: disable=redefined-builtin
@@ -140,6 +140,7 @@ class Node:
         self.devtype = None
         self.ssh_config_file = kwargs.get("ssh_config_file", None)
         self.enable_password = kwargs.get('enable_password')
+        self.vm_id = kwargs.get("vm_id", None)
 
         passphrase: str = kwargs.get("passphrase", None)
         jump_host = kwargs.get("jump_host", "")
@@ -547,6 +548,8 @@ class Node:
                 self.__class__ = PanosNode
             elif self.devtype == "linux":
                 self.__class__ = LinuxNode
+            elif self.devtype == "vsphere":
+                self.__class__ = VsphereNode
 
         # Now invoke the class specific NOS version extraction
         if version_str:
@@ -2272,6 +2275,134 @@ class PanosNode(Node):
                             result.append(
                                 self._create_result(
                                     cmd, status, json_out, cmd_timestamp)
+                            )
+                        else:
+                            result.append(self._create_error(cmd))
+                            self.logger.error(
+                                f'{self.transport}://{self.hostname}:'
+                                f'{self.port}: Command {cmd} failed with '
+                                f'status {response.status}')
+            except Exception as e:
+                self.current_exception = e
+                for cmd in cmd_list:
+                    result.append(self._create_error(cmd))
+                self.logger.error(
+                    f"{self.transport}://{self.hostname}:{self.port} "
+                    f"Unable to communicate due to {str(e)}")
+
+        await self._post_result(service_callback, result, cb_token)
+
+class VsphereNode(Node):
+    '''Node object representing access to a Vsphere Node'''
+
+    async def _fetch_init_dev_data_devtype(self, reconnect: bool):
+        cmdlist = ["appliance/system/version", "appliance/system/uptime"]
+
+        await self._exec_cmd(self._parse_init_dev_data, cmdlist,
+                             None, reconnect=reconnect)
+
+    async def get_api_key(self):
+        """Authenticate to get the API key needed in all cmd requests"""
+        auth_url = f"https://{self.address}/api/session"
+        auth_creds = aiohttp.BasicAuth(self.username, self.password)
+        try:
+            async with self._cmd_pacer.wait():
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(auth_url, auth=auth_creds, ssl=False) as response:
+                        if response.status == 201:
+                            self.api_key  = await response.json()
+                            self._retry = self._max_retries_on_auth_fail  # reset retry count
+                        elif response.status == 403:
+                            self.logger.error('Invalid credentials, could not get API key.')
+                            self._retry -= 1
+                        else:
+                            self.logger.error(f'Unknown error {response.status}, could not get API key.')
+        except Exception as e:
+            self.current_exception = e
+            self.logger.error(f'Failed to authenticate due to: {str(e)}')
+
+    async def _parse_init_dev_data_devtype(self, output, cb_token) -> None:
+        """Parse the uptime command output"""
+        # Extract version
+        if output[0]["status"] == 200:
+            self.version = output[0]["data"].get("version")
+            if not self.version:
+                self.logger.error(f'nodeinit: Error getting version for'
+                                  f'{self.address}:{self.port}')
+
+        if (len(output) > 1) and (output[1]["status"] == 200):
+            uptime = float(output[1]["data"].get("value"))
+            current_time = time.time()
+            if not uptime:
+                self.logger.warning(
+                    f'{self.address}:{self.port} Unable to parse vmware boot'
+                    f'time from {output[1]["data"]}')
+                uptime = current_time
+            self.bootupTimestamp = current_time - uptime
+
+    async def _rest_connect(self):
+    # Ensure the connection session is initiated properly
+        if not self._conn:
+            async with self._cmd_pacer.wait(self.per_cmd_auth):
+                try:
+                    self._conn = aiohttp.ClientSession(
+                        conn_timeout=self.connect_timeout,
+                        connector=aiohttp.TCPConnector(ssl=False),
+                    )
+                    if self.api_key is None:
+                        await self.get_api_key()
+                    # If the api_key is still None after attempting to authenticate, handle gracefully
+                    if self.api_key is None:
+                        self.logger.error(f'Failed to authenticate to {self.address}. API key is not available.')
+                        await self._close_connection()
+                except Exception as e:
+                    if self._conn:
+                        await self._close_connection()
+                    self.logger.error(f'Unable to establish session to {self.address}:{self.port} due to error: {str(e)}')
+
+    async def _rest_gather(self, service_callback, cmd_list, cb_token,
+                           oformat="json", timeout=None, reconnect=True):
+        result = []
+        if not cmd_list:
+            return result
+
+        timeout = timeout or self.connect_timeout
+
+        base_url = f"https://{self.address}:{self.port}/api/"
+
+        headers = {}
+        if self.api_key:
+            headers['vmware-api-session-id'] = self.api_key
+
+        status = 200  # status OK
+        if not self.is_connected or self._is_connecting:
+            if reconnect:
+                await self._init_rest()
+            if not self.is_connected:
+                self.logger.error(
+                    f'Unable to connect to node {self.address}:{self.port}'
+                    f'. While executing: {cmd_list}')
+                for cmd in cmd_list:
+                    result.append(self._create_error(cmd))
+                await self._post_result(service_callback, result, cb_token)
+                return
+
+        async with self._cmd_pacer.wait(self.per_cmd_auth):
+            try:
+                for cmd in cmd_list:
+                    full_url = urljoin(base_url, cmd.format(vm=self.vm_id))
+                    self.logger.info(f'{self.address}:{self.port} exec: {cmd.format(vm=self.vm_id)}')
+                    cmd_timestamp = time.time()
+                    async with self._conn.get(
+                            full_url, headers=headers, timeout=timeout) as response:
+                        status, json_data = response.status, await response.json()
+                        if status == 200:
+                            # Workaround the case where API returns a string which is valid json
+                            # However it makes parsing to fit in the schema difficult.
+                            data = json_data if isinstance(json_data, (dict, list)) else {"value": str(json_data)}
+                            result.append(
+                                self._create_result(
+                                    cmd, status, data, cmd_timestamp)
                             )
                         else:
                             result.append(self._create_error(cmd))

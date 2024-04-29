@@ -146,3 +146,13 @@ apply:
       "uptime: _uptime",
       "serial: serialNumber",
     ]'
+
+  vsphere:
+    version: all
+    command:
+    - command: vcenter/vm/{vm}
+      normalize: '[
+        "guest_OS: os",
+        "name: _address",
+        "memory/size_MiB: memory",
+        "hardware/version: version"]'

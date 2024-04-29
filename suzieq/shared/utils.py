@@ -881,7 +881,7 @@ def known_devtypes() -> list:
     """Returns the list of known dev types"""
     return (['cumulus', 'eos', 'iosxe', 'iosxr', 'ios', 'junos-mx',
              'junos-qfx', 'junos-qfx10k', 'junos-ex', 'junos-es', 'junos-evo',
-             'linux', 'nxos', 'sonic', 'panos'])
+             'linux', 'nxos', 'sonic', 'panos', 'vsphere'])
 
 
 def humanize_timestamp(field: pd.Series, tz=None) -> pd.Series:

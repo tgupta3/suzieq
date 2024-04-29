@@ -187,3 +187,13 @@ class DeviceService(Service):
             entry["vendor"] = "Palo Alto"
             entry["os"] = "panos"
         return self._common_data_cleaner(processed_data, raw_data)
+
+    def _clean_vsphere_data(self, processed_data, raw_data):
+        for entry in processed_data:
+            entry["vendor"] = "Vmware"
+       # Overwrite address after running common data cleaner
+       # This is being done, because there is no direct field to map the vc name to.
+        processed_data = self._common_data_cleaner(processed_data, raw_data)
+        for entry in processed_data:
+            entry["address"] = entry["_address"]
+        return processed_data
